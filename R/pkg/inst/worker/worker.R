@@ -27,6 +27,11 @@ elapsedSecs <- function() {
   proc.time()[3]
 }
 
+# Convert data.frame to a nesting of pure lists
+extractListsFromDataFrame <- function(x) {
+  lapply(x, unlist, recursive=FALSE)
+}
+
 compute <- function(mode, partition, serializer, deserializer, key,
              colNames, computeFunc, inputData) {
   if (mode > 0) {
@@ -41,7 +46,7 @@ compute <- function(mode, partition, serializer, deserializer, key,
       if ("raw" %in% sapply(inputData[[1]], class)) {
         inputData <- SparkR:::rbindRaws(inputData)
       } else {
-        inputData <- do.call(rbind.data.frame, inputData)
+        inputData <- as.data.frame(do.call(rbind, inputData))
       }
 
       options(stringsAsFactors = oldOpt)
@@ -61,6 +66,7 @@ compute <- function(mode, partition, serializer, deserializer, key,
     if (serializer == "row") {
       # Transform the result data.frame back to a list of rows
       output <- split(output, seq(nrow(output)))
+      output <- lapply(output, extractListsFromDataFrame)
     } else {
       # Serialize the output to a byte array
       stopifnot(serializer == "byte" || serializer == "arrow")
